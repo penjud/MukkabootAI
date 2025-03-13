@@ -1,0 +1,175 @@
+// MukkabootAI PM2 Ecosystem Configuration
+module.exports = {
+  apps: [
+    {
+      name: 'mcp-base',
+      script: './backend/services/base/server.js',
+      cwd: '/home/mothership/MukkabootAI',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3010,
+        BASE_MCP_PORT: 3010,
+        BASE_MCP_HOST: 'localhost',
+        BASE_MCP_LOG_LEVEL: 'info'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '300M',
+      wait_ready: true,
+      listen_timeout: 10000,
+      kill_timeout: 5000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      out_file: './logs/mcp-base.log',
+      error_file: './logs/mcp-base-error.log'
+    },
+    {
+      name: 'mcp-auth',
+      script: './backend/services/auth/server.js',
+      cwd: '/home/mothership/MukkabootAI',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3013,
+        AUTH_MCP_PORT: 3013,
+        AUTH_MCP_HOST: 'localhost',
+        BASE_SERVER_URL: 'http://localhost:3010',
+        USERS_FILE_PATH: '/home/mothership/MukkabootAI/data/users/users.json',
+        JWT_SECRET: 'your-secret-key-here'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '300M',
+      listen_timeout: 10000,
+      kill_timeout: 5000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      out_file: './logs/mcp-auth.log',
+      error_file: './logs/mcp-auth-error.log',
+      depends_on: ['mcp-base']
+    },
+    {
+      name: 'mcp-memory',
+      script: './backend/services/memory/server.js',
+      cwd: '/home/mothership/MukkabootAI',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3011,
+        MEMORY_MCP_PORT: 3011,
+        MEMORY_MCP_HOST: 'localhost',
+        BASE_SERVER_URL: 'http://localhost:3010',
+        MEMORY_FILE_PATH: '/home/mothership/MukkabootAI/data/memory/memory.json'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '300M',
+      listen_timeout: 10000,
+      kill_timeout: 5000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      out_file: './logs/mcp-memory.log',
+      error_file: './logs/mcp-memory-error.log',
+      depends_on: ['mcp-base']
+    },
+    {
+      name: 'mcp-filesystem',
+      script: './backend/services/filesystem/server.js',
+      cwd: '/home/mothership/MukkabootAI',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3012,
+        FILESYSTEM_MCP_PORT: 3012,
+        FILESYSTEM_MCP_HOST: 'localhost',
+        BASE_SERVER_URL: 'http://localhost:3010',
+        ALLOWED_DIRECTORIES: '/home/mothership,/tmp'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '300M',
+      listen_timeout: 10000,
+      kill_timeout: 5000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      out_file: './logs/mcp-filesystem.log',
+      error_file: './logs/mcp-filesystem-error.log',
+      depends_on: ['mcp-base']
+    },
+    {
+      name: 'mcp-brave-search',
+      script: './backend/services/brave-search/server.js',
+      cwd: '/home/mothership/MukkabootAI',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3014,
+        BRAVE_SEARCH_MCP_PORT: 3014,
+        BRAVE_SEARCH_MCP_HOST: 'localhost',
+        BASE_SERVER_URL: 'http://localhost:3010'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '300M',
+      listen_timeout: 10000,
+      kill_timeout: 5000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      out_file: './logs/mcp-brave-search.log',
+      error_file: './logs/mcp-brave-search-error.log',
+      depends_on: ['mcp-base']
+    },
+    {
+      name: 'mcp-ollama-bridge',
+      script: './backend/services/ollama-bridge/server.js',
+      cwd: '/home/mothership/MukkabootAI',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3015,
+        OLLAMA_BRIDGE_PORT: 3015,
+        OLLAMA_BRIDGE_HOST: 'localhost',
+        BASE_SERVER_URL: 'http://localhost:3010',
+        OLLAMA_HOST: 'http://localhost:11434'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '300M',
+      listen_timeout: 10000,
+      kill_timeout: 5000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      out_file: './logs/mcp-ollama-bridge.log',
+      error_file: './logs/mcp-ollama-bridge-error.log',
+      depends_on: ['mcp-base']
+    },
+    {
+      name: 'vue-dashboard',
+      script: './frontend/vue-dashboard/server.js',
+      cwd: '/home/mothership/MukkabootAI',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3002,
+        FRONTEND_PORT: 3002,
+        VITE_BASE_API_URL: 'http://localhost:3010',
+        VITE_AUTH_API_URL: 'http://localhost:3013',
+        VITE_MEMORY_API_URL: 'http://localhost:3011',
+        VITE_FILESYSTEM_API_URL: 'http://localhost:3012',
+        VITE_BRAVE_SEARCH_API_URL: 'http://localhost:3014',
+        VITE_OLLAMA_BRIDGE_URL: 'http://localhost:3015'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '500M',
+      listen_timeout: 15000,
+      kill_timeout: 5000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      out_file: './logs/vue-dashboard.log',
+      error_file: './logs/vue-dashboard-error.log',
+      depends_on: ['mcp-base', 'mcp-auth', 'mcp-memory', 'mcp-filesystem']
+    }
+  ]
+};
