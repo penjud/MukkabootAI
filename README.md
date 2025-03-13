@@ -53,6 +53,17 @@ MukkabootAI follows a microservices architecture with the following components:
    - Web user interface
    - Service integration
 
+## Enhanced Platform Features
+
+MukkabootAI now includes several advanced features for improved reliability, monitoring, and performance:
+
+1. **Distributed Tracing** - OpenTelemetry integration for end-to-end visibility
+2. **Enhanced Logging** - Structured logging with Winston for better debuggability
+3. **Circuit Breakers** - Fault tolerance with Opossum for preventing cascading failures
+4. **Job Queue System** - Background processing with BullMQ for improved performance
+
+For details on these enhancements, see the [Enhanced Libraries Integration Guide](docs/enhanced-libraries-integration.md).
+
 ## Installation
 
 ### Prerequisites
@@ -60,12 +71,13 @@ MukkabootAI follows a microservices architecture with the following components:
 1. Node.js 16+ and npm
 2. Ollama for local AI models
 3. MongoDB (optional, for Auth Service)
+4. Redis (for enhanced queue functionality)
 
 ### Setup
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/MukkabootAI.git
+   git clone https://github.com/penjud/MukkabootAI.git
    cd MukkabootAI
    ```
 
@@ -79,6 +91,11 @@ MukkabootAI follows a microservices architecture with the following components:
 4. Install dependencies for all services:
    ```bash
    ./install-dependencies.sh
+   ```
+
+5. (Optional) Install enhanced libraries:
+   ```bash
+   ./scripts/install-enhancements.sh
    ```
 
 ## Starting the Platform
@@ -141,18 +158,24 @@ Default login:
 ```
 MukkabootAI/
 ├── backend/
-│   └── services/
-│       ├── base/           # Base Service
-│       ├── memory/         # Memory Service
-│       ├── filesystem/     # Filesystem Service
-│       ├── auth/           # Auth Service
-│       ├── brave-search/   # Brave Search Service
-│       └── ollama-bridge/  # Ollama Bridge Service
+│   ├── services/
+│   │   ├── base/           # Base Service
+│   │   ├── memory/         # Memory Service
+│   │   ├── filesystem/     # Filesystem Service
+│   │   ├── auth/           # Auth Service
+│   │   ├── brave-search/   # Brave Search Service
+│   │   └── ollama-bridge/  # Ollama Bridge Service
+│   └── shared/             # Shared libraries
+│       ├── telemetry/      # OpenTelemetry integration
+│       ├── logger/         # Enhanced logging with Winston
+│       ├── circuit-breaker/ # Circuit breaker pattern with Opossum
+│       └── queue/          # Job queue system with BullMQ
 ├── frontend/
 │   └── vue-dashboard/      # Vue Dashboard
 ├── data/                   # Data storage
 ├── rag/                    # RAG system
 │   └── mukka_vault/        # Documentation vault
+├── docs/                   # Documentation
 └── scripts/                # Utility scripts
 ```
 
@@ -170,6 +193,12 @@ Detailed documentation is available in the `rag/mukka_vault` directory:
 - **User Guides**: `/rag/mukka_vault/02-User/`
 - **Developer Guides**: `/rag/mukka_vault/03-Developer/`
 - **Design Documents**: `/rag/mukka_vault/04-Design/`
+
+Additional documentation:
+
+- **Enhanced Libraries Integration**: `/docs/enhanced-libraries-integration.md`
+- **Authentication System**: `/docs/authentication-system.md`
+- **UI Components**: `/docs/ui-components.md`
 
 ## Contributing
 
