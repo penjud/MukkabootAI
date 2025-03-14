@@ -7,7 +7,7 @@ const API_CONFIG = {
   authApiUrl: import.meta.env.VITE_AUTH_API_URL || 'http://localhost:3013',
   
   // Memory Service
-  memoryApiUrl: import.meta.env.VITE_MEMORY_API_URL || 'http://localhost:3002',
+  memoryApiUrl: import.meta.env.VITE_MEMORY_API_URL || 'http://localhost:3011',
   
   // Filesystem Service
   filesystemApiUrl: import.meta.env.VITE_FILESYSTEM_API_URL || 'http://localhost:3012',

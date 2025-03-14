@@ -280,12 +280,16 @@ const systemConfig = {
 // Register with base MCP server
 const registerWithBaseServer = async () => {
   try {
-    const response = await axios.post(`${BASE_SERVER_URL}/services/register`, {
+    const response = await axios.post(`${BASE_SERVER_URL}/api/registry/services`, {
       name: 'auth',
       host: 'localhost',
       port: PORT,
       type: 'auth',
       description: 'MCP Authentication Server'
+    }, {
+      headers: {
+        'Authorization': 'Bearer default-auth-token'
+      }
     });
     logger.info('Registered with base MCP server', response.data);
   } catch (error) {
