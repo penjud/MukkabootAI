@@ -155,11 +155,16 @@ const authenticate = async (req, res, next) => {
 // Register with base server
 const registerWithBaseServer = async () => {
   try {
-    const response = await axios.post(`${BASE_SERVER_URL}/services/register`, {
+    const response = await axios.post(`${BASE_SERVER_URL}/api/registry/services`, {
       name: 'ollama-bridge',
-      url: `http://${HOST}:${PORT}`,
+      host: HOST,
+      port: PORT,
       type: 'ollama-bridge',
       description: 'MukkabootAI Ollama Bridge Server for AI model integration'
+    }, {
+      headers: {
+        'Authorization': 'Bearer default-auth-token'
+      }
     });
     logger.info('Registered with base server', response.data);
     return true;

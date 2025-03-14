@@ -102,11 +102,16 @@ app.use('/images', rateLimiterMiddleware);
 // Register with base server
 const registerWithBaseServer = async () => {
   try {
-    const response = await axios.post(`${BASE_SERVER_URL}/services/register`, {
+    const response = await axios.post(`${BASE_SERVER_URL}/api/registry/services`, {
       name: 'brave-search',
-      url: `http://${HOST}:${PORT}`,
+      host: HOST,
+      port: PORT,
       type: 'brave-search',
       description: 'MukkabootAI Brave Search Server for web search capabilities'
+    }, {
+      headers: {
+        'Authorization': 'Bearer default-auth-token'
+      }
     });
     logger.info('Registered with base server', response.data);
     return true;

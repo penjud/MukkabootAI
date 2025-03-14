@@ -17,7 +17,12 @@ const registerWithBaseService = async () => {
     
     const response = await axios.post(
       `${config.baseService.url}/api/registry/services`, 
-      registrationData
+      registrationData,
+      {
+        headers: {
+          'Authorization': 'Bearer default-auth-token'
+        }
+      }
     );
     
     logger.info('Registered with base service successfully', response.data);
