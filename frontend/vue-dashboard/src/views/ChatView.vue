@@ -1,336 +1,323 @@
 <template>
-  <div>
-    <h1 class="text-h4 mb-4">Chat</h1>
-    
-    <v-row>
-      <v-col cols="12" md="3">
-        <v-card class="mb-4">
-          <v-card-title>
-            <v-icon left color="primary" class="mr-2">mdi-chat</v-icon>
-            Conversations
-          </v-card-title>
-          <v-card-text>
-            <v-list>
-              <v-list-item
-                v-for="(conversation, i) in conversations"
-                :key="i"
-                :title="conversation.title"
-                :subtitle="conversation.timestamp"
-                :value="conversation.id"
-                @click="selectConversation(conversation)"
-                :active="selectedConversation?.id === conversation.id"
-              >
-                <template v-slot:prepend>
-                  <v-avatar color="primary" size="36">
-                    <v-icon color="white">mdi-chat</v-icon>
-                  </v-avatar>
-                </template>
-              </v-list-item>
-            </v-list>
-            
-            <v-btn
-              block
-              color="primary"
-              variant="outlined"
-              class="mt-4"
-              prepend-icon="mdi-plus"
-              @click="createNewConversation"
-            >
-              New Conversation
-            </v-btn>
-          </v-card-text>
-        </v-card>
+  <div class="chat-view d-flex flex-column" style="height: 100%;">
+    <v-row class="flex-grow-1 flex-nowrap" style="min-height: 0;">
+      <!-- Left Sidebar: Agent List -->
+      <v-col 
+        :cols="leftSidebarCols" 
+        class="d-flex flex-column pa-2"
+        :class="{ 'd-none': leftSidebarHidden }"
+      >
+        <agent-sidebar></agent-sidebar>
       </v-col>
       
-      <v-col cols="12" md="9">
-        <v-card class="mb-4 chat-container">
-          <v-card-title class="d-flex align-center">
-            <v-icon left color="primary" class="mr-2">mdi-chat</v-icon>
-            {{ selectedConversation ? selectedConversation.title : 'No Conversation Selected' }}
+      <!-- Chat Area -->
+      <v-col class="d-flex flex-column pa-2 flex-grow-1">
+        <v-card class="flex-grow-1 d-flex flex-column">
+          <!-- Chat Header -->
+          <v-card-title class="d-flex align-center py-3">
+            <!-- Toggle left sidebar on mobile -->
+            <v-btn
+              icon="mdi-menu"
+              variant="text"
+              size="small"
+              class="d-md-none mr-2"
+              @click="toggleLeftSidebar"
+              aria-label="Toggle conversation list"
+            ></v-btn>
+            
+            <div v-if="selectedConversation" class="d-flex align-center">
+              <v-avatar :color="agentColor" size="32" class="mr-2">
+                <v-icon color="white">{{ selectedAgent.icon }}</v-icon>
+              </v-avatar>
+              <div class="title-container">
+                <div class="title text-truncate">{{ selectedConversation.title }}</div>
+              </div>
+            </div>
+            <div v-else class="grey--text">No Conversation Selected</div>
+            
             <v-spacer></v-spacer>
-            <v-select
-              v-if="selectedConversation"
-              v-model="selectedAgent"
-              :items="agents"
-              item-title="name"
-              item-value="id"
-              label="Agent"
-              hide-details
-              density="compact"
-              style="max-width: 200px;"
-            ></v-select>
+            
+            <!-- Chat Actions -->
+            <template v-if="selectedConversation">
+              <!-- Toggle right sidebar on mobile/tablet -->
+              <v-btn
+                icon="mdi-information"
+                variant="text"
+                size="small"
+                class="d-lg-none"
+                :color="rightSidebarVisible ? 'primary' : undefined"
+                @click="toggleRightSidebar"
+                aria-label="Toggle conversation details"
+              ></v-btn>
+              
+              <!-- Desktop menu -->
+              <v-menu location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    icon="mdi-dots-vertical"
+                    variant="text"
+                    size="small"
+                    v-bind="props"
+                    aria-label="Chat options"
+                  ></v-btn>
+                </template>
+                
+                <v-list density="compact">
+                  <v-list-item
+                    prepend-icon="mdi-pencil"
+                    title="Rename Conversation"
+                    @click="openRenameDialog"
+                  ></v-list-item>
+                  <v-list-item
+                    prepend-icon="mdi-content-copy"
+                    title="Export Chat"
+                    @click="exportConversation"
+                  ></v-list-item>
+                  <v-divider></v-divider>
+                  <v-list-item
+                    prepend-icon="mdi-delete"
+                    title="Delete Conversation"
+                    @click="openDeleteDialog"
+                  ></v-list-item>
+                </v-list>
+              </v-menu>
+            </template>
           </v-card-title>
           
           <v-divider></v-divider>
           
-          <v-card-text class="messages-container" ref="messagesContainer">
-            <div v-if="!selectedConversation" class="text-center my-8">
+          <!-- Messages Area -->
+          <v-card-text ref="messagesContainer" class="messages-container flex-grow-1 pa-4">
+            <div v-if="!selectedConversation" class="text-center empty-state my-8">
               <v-icon size="64" color="grey-lighten-1">mdi-chat-outline</v-icon>
               <div class="text-h6 mt-2">Select a conversation or create a new one</div>
+              <v-btn
+                color="primary"
+                class="mt-4"
+                prepend-icon="mdi-plus"
+                @click="createNewConversation"
+              >
+                New Conversation
+              </v-btn>
             </div>
             
-            <div v-else-if="messages.length === 0" class="text-center my-8">
+            <div v-else-if="isLoadingMessages" class="text-center my-8">
+              <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+              <div class="text-h6 mt-4">Loading messages...</div>
+            </div>
+            
+            <div v-else-if="messages.length === 0" class="text-center empty-state my-8">
               <v-icon size="64" color="grey-lighten-1">mdi-chat-outline</v-icon>
               <div class="text-h6 mt-2">No messages yet</div>
               <div class="text-subtitle-1">Start a conversation by sending a message</div>
             </div>
             
-            <div v-else>
+            <div v-else class="messages-list">
               <chat-message
                 v-for="(message, i) in messages"
                 :key="i"
                 :message="message"
-                :agent-name="getAgentName(selectedAgent)"
-                class="mb-4"
+                :agent-name="selectedAgent.name"
               ></chat-message>
             </div>
           </v-card-text>
           
           <v-divider></v-divider>
           
-          <v-card-actions class="pa-4">
+          <!-- Chat Input -->
+          <v-card-actions class="pa-0">
             <chat-input
               :disabled="!selectedConversation"
-              :is-sending="isSending"
+              :is-sending="isSendingMessage"
               @send-message="handleSendMessage"
               @attach-files="handleAttachFiles"
             ></chat-input>
           </v-card-actions>
         </v-card>
       </v-col>
+      
+      <!-- Right Sidebar: Context Panel -->
+      <v-col 
+        v-if="rightSidebarVisible"
+        :cols="rightSidebarCols" 
+        class="d-flex flex-column pa-2"
+        :class="{ 'd-none': rightSidebarHidden }"
+      >
+        <chat-context-panel
+          @close="toggleRightSidebar"
+          @delete-conversation="deleteConversation"
+          @export-conversation="exportConversation"
+        ></chat-context-panel>
+      </v-col>
     </v-row>
+    
+    <!-- Rename Conversation Dialog -->
+    <v-dialog v-model="renameDialog" max-width="500px">
+      <v-card>
+        <v-card-title>Rename Conversation</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="renameTitle"
+            label="Conversation name"
+            variant="outlined"
+            hide-details="auto"
+            autofocus
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            variant="text"
+            @click="renameDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            @click="renameConversation"
+            :disabled="!renameTitle"
+          >
+            Save
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
+    <!-- Delete Conversation Dialog -->
+    <v-dialog v-model="deleteDialog" max-width="500px">
+      <v-card>
+        <v-card-title>Delete Conversation</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete "<strong>{{ selectedConversation?.title }}</strong>"? This action cannot be undone.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            variant="text"
+            @click="deleteDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            @click="deleteConversation"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
-
 <script>
-import { ref, onMounted, nextTick, computed, watch } from 'vue';
-import { format } from 'date-fns';
-import { v4 as uuidv4 } from 'uuid';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useDisplay } from 'vuetify';
+import { useChatStore } from '../stores/chat';
+import { FilesystemService } from '../services';
+import AgentSidebar from '../components/chat/sidebar/AgentSidebar.vue';
+import ChatContextPanel from '../components/chat/context/ChatContextPanel.vue';
 import ChatMessage from '../components/chat/ChatMessage.vue';
 import ChatInput from '../components/chat/ChatInput.vue';
-import { ChatService, FilesystemService } from '../services';
 
 export default {
   name: 'ChatView',
   components: {
+    AgentSidebar,
+    ChatContextPanel,
     ChatMessage,
     ChatInput
   },
   setup() {
-    const conversations = ref([]);
-    const selectedConversation = ref(null);
-    const messages = ref([]);
-    const isSending = ref(false);
-    const streamController = ref(null);
+    const chatStore = useChatStore();
+    const display = useDisplay();
+    
+    // Store refs
+    const {
+      conversations,
+      selectedConversation,
+      selectedAgent,
+      messages,
+      isLoadingMessages,
+      isSendingMessage
+    } = storeToRefs(chatStore);
+    
+    // Local state
     const messagesContainer = ref(null);
-    const agents = ref([
-      { id: 'agent-1', name: 'General Assistant', model: 'llama3' },
-      { id: 'agent-2', name: 'Code Helper', model: 'codellama' },
-      { id: 'agent-3', name: 'Research Assistant', model: 'llama3' }
-    ]);
-    const selectedAgent = ref('agent-1');
-
-    // Fetch conversations on component mount
-    onMounted(async () => {
-      try {
-        const conversationsData = await ChatService.getConversations();
-        conversations.value = conversationsData.map(conversation => ({
-          ...conversation,
-          timestamp: format(new Date(conversation.updatedAt || conversation.timestamp || new Date()), 'MMM d, yyyy h:mm a')
-        }));
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
-        // Add mock data if API is not available
-        conversations.value = [
-          { id: 'conv-1', title: 'General Questions', timestamp: 'Mar 13, 2025 9:15 AM', messageCount: 12 },
-          { id: 'conv-2', title: 'Project Planning', timestamp: 'Mar 12, 2025 2:30 PM', messageCount: 8 },
-          { id: 'conv-3', title: 'API Documentation', timestamp: 'Mar 10, 2025 4:45 PM', messageCount: 5 }
-        ];
-      }
+    const leftSidebarVisible = ref(true);
+    const rightSidebarVisible = ref(true);
+    const renameDialog = ref(false);
+    const deleteDialog = ref(false);
+    const renameTitle = ref('');
+    
+    // Computed for responsive layout
+    const leftSidebarCols = computed(() => {
+      if (display.mdAndDown.value) return 12;
+      return 3;
     });
-
+    
+    const rightSidebarCols = computed(() => {
+      if (display.mdAndDown.value) return 12;
+      return 3;
+    });
+    
+    const leftSidebarHidden = computed(() => {
+      if (display.mdAndUp.value) return false;
+      return !leftSidebarVisible.value;
+    });
+    
+    const rightSidebarHidden = computed(() => {
+      if (display.lgAndUp.value) return false;
+      return !rightSidebarVisible.value;
+    });
+    
+    const agentColor = computed(() => {
+      const agentColors = {
+        'agent-1': 'primary',
+        'agent-2': 'info',
+        'agent-3': 'success'
+      };
+      
+      return agentColors[selectedAgent.value?.id] || 'grey';
+    });
+    
+    // Initialize the chat view
+    onMounted(async () => {
+      await chatStore.fetchConversations();
+      
+      // Set responsive sidebar visibility based on screen size
+      leftSidebarVisible.value = display.mdAndUp.value;
+      rightSidebarVisible.value = display.lgAndUp.value;
+    });
+    
     // Watch for changes in messages and scroll to bottom
-    watch(messages, async () => {
-      await nextTick();
+    watch(messages, () => {
       scrollToBottom();
     }, { deep: true });
-
-    // Select a conversation
-    const selectConversation = async (conversation) => {
-      selectedConversation.value = conversation;
-      messages.value = [];
-      
-      try {
-        const messagesData = await ChatService.getMessages(conversation.id);
-        messages.value = messagesData.map(message => ({
-          ...message,
-          timestamp: format(new Date(message.timestamp || message.createdAt || new Date()), 'h:mm a')
-        }));
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-        // Add mock data if API is not available
-        loadMockMessages(conversation.id);
+    
+    // Scroll to bottom of messages container
+    const scrollToBottom = async () => {
+      await nextTick();
+      if (messagesContainer.value) {
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
       }
     };
-
-    // Load mock messages for development/testing
-    const loadMockMessages = (conversationId) => {
-      if (conversationId === 'conv-1') {
-        messages.value = [
-          { id: 'msg-1', role: 'user', content: 'Hello, how can you help me today?', timestamp: '9:10 AM' },
-          { id: 'msg-2', role: 'assistant', content: 'I can help with a variety of tasks such as answering questions, providing information, and assisting with tasks. What would you like help with?', timestamp: '9:11 AM' },
-          { id: 'msg-3', role: 'user', content: 'Tell me about the MukkabootAI platform.', timestamp: '9:12 AM' },
-          { id: 'msg-4', role: 'assistant', content: 'MukkabootAI is a Docker-free implementation of the MukkaAI platform, designed for AI agents and command operations. It maintains a microservices architecture while eliminating containerization dependencies for improved performance and simplified maintenance.', timestamp: '9:15 AM' }
-        ];
-      } else if (conversationId === 'conv-2') {
-        messages.value = [
-          { id: 'msg-5', role: 'user', content: 'Let\'s plan a project to implement a new feature.', timestamp: '2:20 PM' },
-          { id: 'msg-6', role: 'assistant', content: 'Great! What kind of feature are you thinking about implementing?', timestamp: '2:21 PM' },
-          { id: 'msg-7', role: 'user', content: 'A file sharing system that integrates with our existing platform.', timestamp: '2:25 PM' },
-          { id: 'msg-8', role: 'assistant', content: 'That sounds like a useful addition. Let\'s break this down into steps: 1) Requirements gathering, 2) Design phase, 3) Implementation, 4) Testing, and 5) Deployment. Would you like to discuss any of these phases in more detail?', timestamp: '2:30 PM' }
-        ];
-      } else {
-        messages.value = [
-          { id: 'msg-9', role: 'user', content: 'I need help understanding the API documentation.', timestamp: '4:40 PM' },
-          { id: 'msg-10', role: 'assistant', content: 'I\'d be happy to help. Which API are you working with?', timestamp: '4:41 PM' },
-          { id: 'msg-11', role: 'user', content: 'The MukkabootAI Memory Service API.', timestamp: '4:43 PM' },
-          { id: 'msg-12', role: 'assistant', content: 'The Memory Service API provides endpoints for storing and retrieving conversation history and knowledge entities. The main endpoints are `/api/conversations`, `/api/entities`, and `/api/relations`. Would you like me to explain any specific endpoint in more detail?', timestamp: '4:45 PM' }
-        ];
-      }
-    };
-
+    
     // Create a new conversation
-    const createNewConversation = async () => {
-      const newConversationData = {
-        title: `New Conversation (${format(new Date(), 'MMM d, h:mm a')})`,
-        agentId: selectedAgent.value
-      };
-      
-      try {
-        const newConversation = await ChatService.createConversation(newConversationData);
-        const formattedConversation = {
-          ...newConversation,
-          timestamp: format(new Date(newConversation.createdAt || newConversation.timestamp || new Date()), 'MMM d, yyyy h:mm a')
-        };
-        conversations.value.unshift(formattedConversation);
-        selectConversation(formattedConversation);
-      } catch (error) {
-        console.error('Error creating conversation:', error);
-        // Create mock conversation if API is not available
-        const mockConversation = {
-          id: `conv-${uuidv4()}`,
-          title: newConversationData.title,
-          timestamp: format(new Date(), 'MMM d, yyyy h:mm a'),
-          messageCount: 0
-        };
-        conversations.value.unshift(mockConversation);
-        selectConversation(mockConversation);
-      }
+    const createNewConversation = () => {
+      chatStore.createNewConversation();
     };
-
-    // Handle send message from ChatInput component
-    const handleSendMessage = async (messageContent) => {
-      if (!messageContent.trim() || !selectedConversation.value || isSending.value) {
-        return;
-      }
-      
-      isSending.value = true;
-      
-      // Add user message to the UI immediately
-      const userMessage = {
-        id: `temp-${uuidv4()}`,
-        role: 'user',
-        content: messageContent,
-        timestamp: format(new Date(), 'h:mm a')
-      };
-      
-      messages.value.push(userMessage);
-      
-      try {
-        // Send the message to the server
-        const savedMessage = await ChatService.sendMessage(selectedConversation.value.id, {
-          role: 'user',
-          content: messageContent,
-          model: getSelectedModel()
-        });
-        
-        // Update the user message with the server response if needed
-        if (savedMessage && savedMessage.id) {
-          const index = messages.value.findIndex(m => m.id === userMessage.id);
-          if (index !== -1) {
-            messages.value[index] = {
-              ...savedMessage,
-              timestamp: format(new Date(savedMessage.timestamp || savedMessage.createdAt || new Date()), 'h:mm a')
-            };
-          }
-        }
-        
-        // Add an initial streaming message
-        const streamingMessage = {
-          id: `stream-${uuidv4()}`,
-          role: 'assistant',
-          content: '',
-          isStreaming: true,
-          timestamp: format(new Date(), 'h:mm a')
-        };
-        
-        messages.value.push(streamingMessage);
-        
-        // Process the streaming response
-        await ChatService.sendStreamingMessage(
-          selectedConversation.value.id,
-          {
-            role: 'user',
-            content: messageContent,
-            model: getSelectedModel()
-          },
-          (chunk, fullText) => {
-            // Update the streaming message with new content
-            const index = messages.value.findIndex(m => m.id === streamingMessage.id);
-            if (index !== -1) {
-              messages.value[index].content = fullText;
-            }
-          }
-        ).then((finalResponse) => {
-          // Update the message to final state when streaming is complete
-          const index = messages.value.findIndex(m => m.id === streamingMessage.id);
-          if (index !== -1) {
-            messages.value[index].isStreaming = false;
-            messages.value[index].content = finalResponse;
-          }
-        });
-        
-      } catch (error) {
-        console.error('Error sending message:', error);
-        
-        // Handle error state - show error in UI
-        const errorIndex = messages.value.findIndex(m => m.isStreaming);
-        if (errorIndex !== -1) {
-          messages.value[errorIndex].isStreaming = false;
-          messages.value[errorIndex].content = "I'm sorry, there was an error processing your request. Please try again later.";
-          messages.value[errorIndex].isError = true;
-        } else {
-          // Add error message if no streaming message exists
-          messages.value.push({
-            id: `error-${uuidv4()}`,
-            role: 'assistant',
-            content: "I'm sorry, there was an error processing your request. Please try again later.",
-            isError: true,
-            timestamp: format(new Date(), 'h:mm a')
-          });
-        }
-      } finally {
-        isSending.value = false;
-      }
+    
+    // Handle send message
+    const handleSendMessage = (messageContent) => {
+      chatStore.sendMessage(messageContent);
     };
-
+    
     // Handle file attachments
     const handleAttachFiles = async (files) => {
       if (!files || files.length === 0 || !selectedConversation.value) {
         return;
       }
-      
-      isSending.value = true;
       
       try {
         // Upload each file
@@ -339,7 +326,10 @@ export default {
           formData.append('file', file);
           formData.append('conversationId', selectedConversation.value.id);
           
-          return await FilesystemService.uploadFile(`/conversations/${selectedConversation.value.id}/attachments`, formData);
+          return await FilesystemService.uploadFile(
+            `/conversations/${selectedConversation.value.id}/attachments`, 
+            formData
+          );
         });
         
         const uploadedFiles = await Promise.all(uploadPromises);
@@ -347,77 +337,177 @@ export default {
         // Add a message with the file attachments
         const fileList = uploadedFiles.map(file => `[${file.name}](${file.url})`).join('\n');
         
-        const attachmentMessage = {
-          role: 'user',
-          content: `Attached file(s):\n${fileList}`,
-          files: uploadedFiles,
-          timestamp: format(new Date(), 'h:mm a')
-        };
-        
         // Send the message with attachments
-        await handleSendMessage(attachmentMessage.content);
+        chatStore.sendMessage(`Attached file(s):\n${fileList}`);
       } catch (error) {
         console.error('Error uploading files:', error);
-        // Show error message
-        messages.value.push({
-          id: `error-${uuidv4()}`,
-          role: 'system',
-          content: "Failed to upload files. Please try again.",
-          isError: true,
-          timestamp: format(new Date(), 'h:mm a')
-        });
-      } finally {
-        isSending.value = false;
       }
     };
-
-    // Helper function to scroll to bottom of messages container
-    const scrollToBottom = () => {
-      if (messagesContainer.value) {
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    
+    // Toggle the left sidebar
+    const toggleLeftSidebar = () => {
+      leftSidebarVisible.value = !leftSidebarVisible.value;
+      
+      // If on mobile, hide the right sidebar when showing the left
+      if (leftSidebarVisible.value && display.mdAndDown.value) {
+        rightSidebarVisible.value = false;
       }
     };
-
-    // Helper function to get agent name
-    const getAgentName = (agentId) => {
-      const agent = agents.value.find(a => a.id === agentId);
-      return agent ? agent.name : 'Assistant';
+    
+    // Toggle the right sidebar
+    const toggleRightSidebar = () => {
+      rightSidebarVisible.value = !rightSidebarVisible.value;
+      
+      // If on mobile, hide the left sidebar when showing the right
+      if (rightSidebarVisible.value && display.mdAndDown.value) {
+        leftSidebarVisible.value = false;
+      }
     };
-
-    // Helper function to get selected model
-    const getSelectedModel = () => {
-      const agent = agents.value.find(a => a.id === selectedAgent.value);
-      return agent ? agent.model : 'llama3';
+    
+    // Open rename dialog
+    const openRenameDialog = () => {
+      if (selectedConversation.value) {
+        renameTitle.value = selectedConversation.value.title;
+        renameDialog.value = true;
+      }
     };
-
+    
+    // Rename conversation
+    const renameConversation = async () => {
+      if (selectedConversation.value && renameTitle.value) {
+        await chatStore.updateConversation(selectedConversation.value.id, { title: renameTitle.value });
+        renameDialog.value = false;
+        renameTitle.value = '';
+      }
+    };
+    
+    // Open delete dialog
+    const openDeleteDialog = () => {
+      if (selectedConversation.value) {
+        deleteDialog.value = true;
+      }
+    };
+    
+    // Delete conversation
+    const deleteConversation = async () => {
+      if (selectedConversation.value) {
+        await chatStore.deleteConversation(selectedConversation.value.id);
+        deleteDialog.value = false;
+      }
+    };
+    
+    // Export conversation
+    const exportConversation = async () => {
+      if (!selectedConversation.value) return;
+      
+      try {
+        // Format messages for export
+        const exportData = {
+          title: selectedConversation.value.title,
+          agent: selectedAgent.value.name,
+          timestamp: new Date().toISOString(),
+          messages: messages.value.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp
+          }))
+        };
+        
+        // Convert to JSON
+        const jsonString = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${selectedConversation.value.title.replace(/\s+/g, '_')}_export.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error exporting conversation:', error);
+      }
+    };
+    
     return {
+      // Store refs
       conversations,
       selectedConversation,
-      messages,
-      isSending,
-      messagesContainer,
-      agents,
       selectedAgent,
-      selectConversation,
+      messages,
+      isLoadingMessages,
+      isSendingMessage,
+      
+      // Local state
+      messagesContainer,
+      leftSidebarVisible,
+      rightSidebarVisible,
+      renameDialog,
+      deleteDialog,
+      renameTitle,
+      
+      // Computed
+      leftSidebarCols,
+      rightSidebarCols,
+      leftSidebarHidden,
+      rightSidebarHidden,
+      agentColor,
+      
+      // Methods
       createNewConversation,
       handleSendMessage,
       handleAttachFiles,
-      getAgentName
+      toggleLeftSidebar,
+      toggleRightSidebar,
+      openRenameDialog,
+      renameConversation,
+      openDeleteDialog,
+      deleteConversation,
+      exportConversation
     };
   }
 };
 </script>
-
-<style scoped>
-.chat-container {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 200px);
+<style>
+.messages-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  background-color: var(--v-theme-surface-lighten-1, #FAFAFA);
 }
 
-.messages-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.empty-state {
+  opacity: 0.7;
+}
+
+.title-container {
+  max-width: 200px;
+  overflow: hidden;
+}
+
+/* Responsive adjustments */
+@media (max-width: 960px) {
+  .messages-container {
+    padding: 12px !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .title-container {
+    max-width: 300px;
+  }
+}
+
+/* Dark theme adjustments */
+:root[class*="v-theme--dark"] .messages-container {
+  background-color: var(--v-theme-surface-darken-1, #121212);
 }
 </style>
